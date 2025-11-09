@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { TrendingUp, ArrowLeft, Users } from 'lucide-react';
 
 export default function UserLogin() {
   const [, setLocation] = useLocation();
-  const { user, loading, signIn, signUp, isAuthenticated } = useSupabaseAuth();
+  const { isLoading: authIsLoading, signIn, signUp, isAuthenticated } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -55,7 +55,7 @@ export default function UserLogin() {
     try {
       const { error } = await signIn(email, password);
       if (error) {
-        setMessage(`Error: ${error.message}`);
+        setMessage(`Error: ${error}`);
       } else {
         setMessage('Welcome back!');
         setTimeout(() => setLocation('/dashboard'), 1000);
@@ -71,9 +71,9 @@ export default function UserLogin() {
     setMessage('');
     setIsLoading(true);
     try {
-      const { error } = await signUp(email, password, firstName, lastName, referralCode);
+      const { error } = await signUp(email, password, `${firstName} ${lastName}`, referralCode);
       if (error) {
-        setMessage(`Error: ${error.message}`);
+        setMessage(`Error: ${error}`);
       } else {
         const successMsg = referralCode 
           ? `Account created successfully with referral code ${referralCode}! Please check your email to confirm your account.`
@@ -89,7 +89,7 @@ export default function UserLogin() {
 
 
 
-  if (loading) {
+  if (authIsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-orange-50">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>

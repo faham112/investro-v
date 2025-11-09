@@ -29,6 +29,14 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    port: 5000,
+    host: '0.0.0.0', // Allows external access
+    proxy: {
+      '/api': {
+        target: 'http://155.138.197.104:5000', // Use the provided IP address
+        changeOrigin: true,
+      },
+    },
     fs: {
       strict: true,
       deny: ["**/.*"],

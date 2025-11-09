@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
 import {
   Shield,
   Users,
@@ -82,7 +81,6 @@ function AdminLoginForm({ onLogin }: { onLogin: (credentials: { username: string
 
 // Main admin dashboard
 function AdminDashboard() {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Fetch admin stats
@@ -118,10 +116,8 @@ function AdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/investment-plans'] });
-      toast({ title: "Success", description: "Investment plan updated successfully" });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to update plan", variant: "destructive" });
     },
   });
 
@@ -137,10 +133,8 @@ function AdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/investment-plans'] });
-      toast({ title: "Success", description: "Investment plan created successfully" });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to create plan", variant: "destructive" });
     },
   });
 
@@ -585,7 +579,6 @@ function AdminDashboard() {
 // Main admin panel component with authentication
 export default function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const { toast } = useToast();
 
   const handleLogin = async (credentials: { username: string; password: string }) => {
     try {
@@ -597,12 +590,9 @@ export default function AdminPanel() {
       
       if (response.ok) {
         setIsAuthenticated(true);
-        toast({ title: "Success", description: "Welcome to admin panel" });
       } else {
-        toast({ title: "Error", description: "Invalid credentials", variant: "destructive" });
       }
     } catch (error) {
-      toast({ title: "Error", description: "Login failed", variant: "destructive" });
     }
   };
 

@@ -1,6 +1,7 @@
 // Shared types for MoneyPro HYIP Platform
 export interface User {
   id: string;
+  username: string;
   email?: string;
   first_name?: string;
   last_name?: string;
@@ -13,6 +14,7 @@ export interface User {
   last_active_at?: string;
   created_at?: string;
   updated_at?: string;
+  role: string;
 }
 
 export interface Transaction {

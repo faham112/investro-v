@@ -1,73 +1,86 @@
-import dotenv from "dotenv";
-dotenv.config({ path: '.env' }); // Load environment variables from .env file
+import express from 'express';
+import http from 'http';
+import { Server as SocketIOServer } from 'socket.io';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { connectDb } from './database/client';
+import authRoutes from './routes/authRoutes';
+import userRoutes from './routes/userRoutes';
+import adminRoutes from './routes/adminRoutes';
+import { createInitialAdmin } from './utils/initialAdmin';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./simple-routes";
-import { setupVite, serveStatic, log } from "./vite";
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+
+// Utility function for delay
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
-    }
-  });
-
-  next();
+const server = http.createServer(app);
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: 'http://155.138.197.104:5000', // Allow requests from your IP address
+    methods: ['GET', 'POST'],
+  },
 });
 
-(async () => {
-  const server = await registerRoutes(app);
+const PORT = process.env.PORT || 3000;
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-    res.status(status).json({ message });
-    throw err;
+// Serve static files from the client build
+app.use(express.static(path.join(__dirname, '../dist/public')));
+
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/admin', adminRoutes);
+
+// Socket.IO integration
+io.on('connection', (socket) => {
+  console.log('A user connected:', socket.id);
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "127.0.0.1",
-  }, () => {
-    log(`serving on port ${port}`);
+  // Example: Listen for a 'joinRoom' event
+  socket.on('joinRoom', (room) => {
+    socket.join(room);
+    console.log(`User ${socket.id} joined room: ${room}`);
   });
-})();
+
+  // Example: Listen for a 'sendMessage' event and broadcast to a room
+  socket.on('sendMessage', ({ room, message }) => {
+    io.to(room).emit('receiveMessage', message);
+  });
+
+  // You can add more real-time event handlers here
+});
+
+// Start the server
+async function startServer() {
+  await connectDb();
+  
+  // Add a small delay to ensure database schema is fully recognized
+  console.log('Waiting for database schema to synchronize...');
+  await delay(3000); // Wait for 3 seconds
+
+  await createInitialAdmin(); // Create admin if not exists
+
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+startServer();
